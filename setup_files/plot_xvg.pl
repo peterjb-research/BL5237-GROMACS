@@ -7,17 +7,22 @@ use File::Basename qw(fileparse);
 my $input = $ARGV[0];
 open my $in, '<', $input or die "Cannot open $input: $!\n";
 my ($title, $xlabel, $ylabel) = ('GROMACS data', 'Time (ps)', 'Value');
+my $legend;
 my (@x, @y);
 while (my $line = <$in>) {
     if ($line =~ /^\@\s+title\s+"(.*?)"/)  { $title = $1; next; }
     if ($line =~ /^\@\s+xaxis\s+label\s+"(.*?)"/) { $xlabel = $1; next; }
-    if ($line =~ /^\@\s+yaxis\s+label\s+"(.*?)"/) { $ylabel = $1; next; }
+    if ($line =~ /^\@\s+s0\s+legend\s+"(.*?)"/) { $legend = $1; next; }
     next if $line =~ /^\s*[\@#&]/ || $line =~ /^\s*$/;
     my @v = split ' ', $line;
     next unless @v >= 2 && $v[0] =~ /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?$/ && $v[1] =~ /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?$/;
     push @x, 0 + $v[0]; push @y, 0 + $v[1];
 }
 close $in;
+# GROMACS energy XVG files may carry a generic, incorrect y-axis unit.
+# Prefer the first series legend and deliberately omit units.
+if (defined $legend && length $legend) { $title = $legend; $ylabel = $legend; }
+else { $ylabel = $title eq "GROMACS Energies" ? "Value" : $title; }
 @x >= 2 or die "Need at least two numeric data rows in $input\n";
 my ($xmin, $xmax, $ymin, $ymax) = ($x[0], $x[0], $y[0], $y[0]);
 for my $i (0 .. $#x) {
